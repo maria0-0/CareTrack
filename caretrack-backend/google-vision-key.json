@@ -1,0 +1,13 @@
+{
+  "type": "service_account",
+  "project_id": "causal-howl-480915-c9",
+  "private_key_id": "8a8c976f59e88379c78f692458d04c0742d3f9eb",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQCIAEpFsC/L4Zei\nUlg4z0wpjtpJhLvvfsfZPi1DZjPuRGcDVkLdN1NhBdasDtEVkTRFK7FFq6O3zM1z\n/g7UUWLYa5PRLrkr5mDRcYMOYdEm2PObhYZnM4/NVplS+MEFN4/khqni9xKhmUOj\nUjIFA42PUz/P+UnXcg/KEDNkMwI1mZM1LL1wRnLop0oulE5hzzzkj4NHKLbaj1DK\nvEC0RwOCce1sY+0ZjSooYw8Qm5RG1REzbwQH/U2yz89jdxUZS1I6uxfZNRKorBvp\nvsi7GnzxmRHRRCKckiRJSwkP1ylM8e9EEMvdt7mnWMBNUKkcWYuSV2bzs+rbxQeF\nNMbsC6AVAgMBAAECggEAF2OtYlTNs4ulr2XoBEUqfQ8zXWd1htfP+P2nfSrrjXO4\nH6vLLg5gyZPeepLFxKbHTYoZH7lIG8keIG+2Dy+8ByphLp2RfQpO5lZWSrfp53ty\nUfHhzofgmFjnX4ymbYZDufKq7vy8+IvKRSFStugIhXi0xcjCuUnFi2PD4tye6aay\npsO0lbxoEyn146Xp3XPTjbTGoCm3Fj4QqxjOEm056qcb3d/Os6R8Ht7gYM31xodU\nxDkdfHlayIwG9WLvE1MXZbH5alRjna0Eq9gR7hChcakaJUwlOH4HdGlmTE1mJfnv\napItM/5TST8AGSESZLDRThnXGFWy42zOLC2h8Dk5tQKBgQC+/o5d63QUkov0ZVTU\nm71vUZmtH7BASo5Khu5fJqSNe8E8Vg1yl0KJuwV8DMiIdSQjPxlYX52YW2S6nF0z\nmoPrnqeMTCoI6UprgoveIwnUe1cjyuPCNk/0z1jpqNhJFWdqD4obyLEemY7CHIwR\nSNFOTaiSijvse7TIkO0b+1NWXwKBgQC2SiTTu2bTdITWJaZJV0gh/J1LCZhS8wHY\nG6jJYZZHa+ZCojCrt9hLRHteSEBfx08NQ2be+d9OFvZwB6Gx7ZHlGqX5bihcq/4s\nwsLyFhZwN7Fu3hl0Te1UjpKZA+19c52RWGBxqZpwdCaWLxskG6/lh3qhZO5HWY0+\n3R3w5m1WCwKBgQCadfGbARUiohWvc9e0DbOY+EwpF4yJogILQa47o1vG1EPFUO6V\nMsDr9CUOWqQ+v0WXf6s2rjUchyUiSdySJC71+ZwUuW/xPwIhijUlU/7aKVmip62k\nXhoxqRKF/TfVewrkWmbd62NalONAFqgsPlCPW/ytbj/iE3V0Esi/LXULTwKBgBps\njQIUPEeSsF7KflxLRq2GjNZ/wZDkoPPOrpzihII95dbq49tAfx4KA0gbeRlpLtBh\nYNwZpIERWw/KS2obYfav8jdB/J/SXrnmUZP+F6qUqCfGEjKFyU1kjWOY6igxRjn3\ncaOITlbWv3EtyuVlDg5boS8cDl5RYOQn8VsmS9sZAoGATHXqfn4Jwf4bHtAyP2Mk\nCt5LLqqW61PvhbEzJXlZMR75MK0Shd1VR7d1L2aIrLIkFRAwKWgtN/zXr0oCBN3D\nqOU5F6JJ7EnzvphnmoLJtSXOaEVCD2CiknLiRnbkVqo4pZTVFqg1RIgjkfR76aUm\nznZl2CdPdVfDGD/3SZA6Eg4=\n-----END PRIVATE KEY-----\n",
+  "client_email": "caretrack@causal-howl-480915-c9.iam.gserviceaccount.com",
+  "client_id": "105756464513379078387",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/caretrack%40causal-howl-480915-c9.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}
