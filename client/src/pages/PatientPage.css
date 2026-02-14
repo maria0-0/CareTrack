@@ -1,0 +1,199 @@
+/* client/src/pages/PatientPage.css */
+
+/* --- Base Layout & Fonts --- */
+.patient-container {
+    padding: 40px;
+    background-color: #f0f3f5; /* Light grey/blue background */
+    min-height: 100vh;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    color: #333;
+}
+
+.patient-header {
+    border-bottom: 3px solid #00c6a7; /* Primary clinic blue line */
+    padding-bottom: 15px;
+    margin-bottom: 30px;
+    color: #2c3e50; /* Darker heading color */
+    font-size: 2.2rem;
+    font-weight: 600;
+}
+
+.patient-info p {
+    font-size: 1.1rem;
+    color: #555;
+}
+
+/* --- Content Grid (Two Columns) --- */
+.content-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr; /* Make the left column (Notes/Appts) wider */
+    gap: 30px;
+}
+
+/* --- Card Styling --- */
+.patient-card {
+    background-color: white;
+    padding: 25px;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    margin-bottom: 30px;
+}
+
+.card-title {
+    color: #00c6a7; /* Clinic Blue for titles */
+    border-bottom: 1px solid #e0e0e0;
+    padding-bottom: 12px;
+    margin-bottom: 20px;
+    font-size: 1.5rem;
+}
+
+/* --- Notes & Appointment Lists --- */
+.notes-list, .appointments-list {
+    list-style: none;
+    padding: 0;
+}
+
+.note-item {
+    border: 1px solid #f0f0f0;
+    padding: 15px;
+    margin-bottom: 15px;
+    border-radius: 8px;
+    background-color: #f9fbfd; /* Very light background for items */
+    transition: box-shadow 0.2s;
+    display: flex;
+    justify-content: space-between; /* Pushes content and actions apart */
+    align-items: flex-start;
+}
+
+.note-item:hover {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.note-item.editing {
+    border: 2px solid #ffc107; /* Highlight edit mode */
+    background-color: #fffde7;
+}
+
+.note-content {
+    flex-grow: 1; /* Allows the content to fill all available space */
+    padding-right: 20px; /* Adds space between the text and the buttons */
+    word-wrap: break-word; /* Ensures long notes wrap correctly */
+    min-width: 0; /* Ensures it shrinks properly in flex containers */
+}
+
+.note-content p, 
+.note-content textarea {
+    color: #333; /* Ensure text is dark grey/black */
+}
+
+.note-actions {
+    flex-shrink: 0; /* Prevents buttons from shrinking */
+    display: flex;
+    gap: 10px;
+}
+
+/* --- File Grid --- */
+.file-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 20px;
+}
+
+.file-card {
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 10px;
+    background-color: #ffffff;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+}
+
+.file-card img {
+    width: 100%;
+    max-height: 150px;
+    object-fit: cover;
+    border-radius: 6px;
+    margin-bottom: 10px;
+    cursor: pointer;
+}
+
+/* --- Buttons (Clarity and Uniformity) --- */
+.note-actions button, .file-card button {
+    padding: 6px 12px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: background-color 0.2s;
+}
+
+.btn-primary {
+    background-color: #00c6a7; /* Clinic Teal */
+    color: white;
+}
+
+.btn-secondary {
+    background-color: #6c757d; /* Grey */
+    color: white;
+}
+
+.btn-warning {
+    background-color: #ffc107; /* Yellow */
+    color: black;
+}
+
+.btn-danger {
+    background-color: #dc3545; /* Red */
+    color: white;
+    border-radius: 4px;
+
+}
+
+.btn-primary:hover, .btn-secondary:hover, .btn-warning:hover, .btn-danger:hover {
+    filter: brightness(0.9);
+}
+
+
+/* --- PRINT STYLES --- */
+
+
+@media print {
+    /* 1. Global Reset */
+    * {
+        color: black !important;
+        background-color: transparent !important;
+        box-shadow: none !important;
+        text-shadow: none !important;
+    }
+    
+    /* 2. Hide UI Controls and Forms */
+    button, form, input, textarea, .btn-action-group {
+        display: none !important;
+    }
+
+    /* 3. Reformat Layout for Paper */
+    .patient-container {
+        padding: 0;
+        margin: 0;
+        min-height: auto;
+    }
+    
+    /* Stack columns vertically for printing */
+    .content-grid {
+        display: block !important; 
+        gap: 0;
+    }
+    
+    /* Ensure cards print cleanly */
+    .patient-card {
+        box-shadow: none !important;
+        border: none !important;
+        padding: 0 0 15px 0 !important;
+        margin-bottom: 15px;
+    }
+    
+    /* Ensure the header is visible and clean */
+    .patient-header {
+        border-bottom: 1px solid #aaa !important;
+        color: black !important;
+    }
+}
