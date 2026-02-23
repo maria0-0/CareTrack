@@ -2,8 +2,8 @@ import './PatientPage.css';
 import React, { useEffect, useState, useContext, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../AuthContext';
-
-
+import SignatureCanvas from 'react-signature-canvas';
+import { jsPDF } from "jspdf";
 
 
 function PatientPage() {
@@ -41,6 +41,85 @@ const [templates, setTemplates] = useState([]); // Master templates
     const [editingForm, setEditingForm] = useState(null); // The form being actively completed
     const [formContent, setFormContent] = useState(''); // Content of the form being edited
     const [selectedTemplateId, setSelectedTemplateId] = useState('');
+    const sigCanvas = React.useRef(null);
+    const clearSignature = () => sigCanvas.current.clear();
+
+
+
+
+const getFileUrl = (path) => {
+    if (!path) return "";
+    // Dacă path-ul începe cu http, înseamnă că e un URL de S3 și îl dăm ca atare
+    if (path.startsWith('http')) {
+        return path;
+    }
+    // Dacă nu începe cu http, e un fișier vechi local, deci punem prefixul de server
+    return `http://localhost:4000${path}`;
+};
+
+
+    const downloadFormPDF = (form) => {
+        const doc = new jsPDF();
+        const margin = 20;
+        const pageWidth = doc.internal.pageSize.getWidth();
+        let currentY = 20;
+    
+        // --- ANTET ---
+        doc.setFontSize(22);
+        doc.setTextColor(0, 198, 167);
+        doc.text("CARETRACK CLINIC", margin, currentY);
+        currentY += 15;
+    
+        // --- CONȚINUT FORMULAR ---
+        doc.setFontSize(11);
+        doc.setTextColor(0);
+        const splitText = doc.splitTextToSize(form.completedContent || form.content, pageWidth - (margin * 2));
+        doc.text(splitText, margin, 70);
+        
+        currentY = 70 + (splitText.length * 7) + 20;
+    
+        // Verificare spațiu pagină
+        if (currentY > 230) { doc.addPage(); currentY = 20; }
+    
+        // --- SECȚIUNE SEMNĂTURI ---
+        // 1. SEMNĂTURA PACIENTULUI (din obiectul form)
+        doc.setFont("helvetica", "bold");
+        doc.text("Semnătură Pacient:", margin, currentY);
+        if (form.signature) {
+            // Luăm imaginea direct din formularul finalizat
+            doc.addImage(form.signature, 'PNG', margin, currentY + 5, 45, 15);
+        } else {
+            doc.setFont("helvetica", "italic");
+            doc.text("____________________ (nesemnat)", margin, currentY + 10);
+        }
+
+        const rightCol = pageWidth / 2 + 10;
+doc.setFont("helvetica", "bold");
+doc.text("Semnătură Medic:", rightCol, currentY);
+
+if (user && user.signature) {
+    try {
+        // Parametri: imagine, format, x, y, lățime, înălțime
+        doc.addImage(user.signature, 'PNG', rightCol, currentY + 5, 40, 15);
+    } catch (imgError) {
+        console.error("Eroare la adăugarea imaginii doctorului:", imgError);
+        doc.setFontSize(8);
+        doc.text("[Eroare format imagine]", rightCol, currentY + 10);
+    }
+} else {
+    doc.setFont("helvetica", "italic");
+    doc.setFontSize(9);
+    doc.text("__________________________", rightCol, currentY + 10);
+    doc.text("(Semnătura neconfigurată)", rightCol, currentY + 15);
+}
+    
+        currentY += 25;
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(9);
+        doc.text(`Dr. ${user.lastName} ${user.firstName}`, rightCol, currentY);
+    
+        doc.save(`Document_${patient.name.replace(/\s+/g, '_')}.pdf`);
+    };
 
   // --- API CALL ---
 
@@ -64,7 +143,7 @@ const [templates, setTemplates] = useState([]); // Master templates
 
   const fetchTemplates = useCallback(async () => {
     try {
-        const res = await fetch('http://localhost:4000/templates', {
+        const res = await fetch('http://localhost:4000/forms/templates', {
             headers: { Authorization: `Bearer ${user.token}` },
         });
         const data = await res.json();
@@ -212,14 +291,12 @@ const [templates, setTemplates] = useState([]); // Master templates
   };
 
   const handleDeleteFile = async (fileId) => {
-    if (!user || !user.token) { // ⭐️ CRITICAL FIX
-        alert("Authentication failed. Please log in again.");
-        return;
-    }
+    if (!user || !user.token) return;
     if (!window.confirm('Are you sure you want to delete this file record?')) return;
 
     try {
-        const res = await fetch(`http://localhost:4000/files/${fileId}`, {
+        // Adaugă /patients în fața rutei
+        const res = await fetch(`http://localhost:4000/patients/files/${fileId}`, {
             method: 'DELETE',
             headers: {
                 Authorization: `Bearer ${user.token}`,
@@ -227,7 +304,6 @@ const [templates, setTemplates] = useState([]); // Master templates
         });
 
         if (res.ok) {
-            // Remove the file from local state
             setPatient(prevPatient => ({
                 ...prevPatient,
                 PatientFiles: (prevPatient.PatientFiles || []).filter(file => file.id !== fileId)
@@ -237,9 +313,10 @@ const [templates, setTemplates] = useState([]); // Master templates
             alert(data.message || 'Failed to delete file record.');
         }
     } catch (err) {
-        setUploadError('Server error deleting file: ' + err.message);
+        // Aceasta este eroarea pe care o vezi acum
+        alert('Server error deleting file: ' + err.message);
     }
-  };
+};
 
 // 1. Start Edit Mode
 const handleStartEditNote = (note) => {
@@ -457,47 +534,51 @@ const handleDeleteRecord = async (recordId) => {
         alert('Server error deleting medical record.');
     }
 };
-// client/src/pages/PatientPage.js
-
 const handleOcrExtraction = async (event) => {
     const file = event.target.files[0];
     if (!file) return;
 
     setOcrLoading(true);
-    setOcrResultText('');
 
+    // Pasul A: Mai întâi urcăm fișierul pe S3 (refolosim logica de upload existentă)
     const formData = new FormData();
-    formData.append('imageFile', file); // 'imageFile' must match upload.single('imageFile') in the backend
+    formData.append('patientFile', file);
+    formData.append('description', 'OCR Scan');
 
     try {
-        const res = await fetch('http://localhost:4000/ocr-extract', {
+        const uploadRes = await fetch(`http://localhost:4000/patients/${id}/files`, {
             method: 'POST',
-            headers: { 
-                Authorization: `Bearer ${user.token}` 
-                // DO NOT set Content-Type header; FormData sets it automatically
-            },
+            headers: { Authorization: `Bearer ${user.token}` },
             body: formData
         });
+        const uploadData = await uploadRes.json();
 
-        const data = await res.json();
-        if (data.success) {
-            setOcrResultText(data.extractedText);
-        } else {
-            alert(data.message || 'Text extraction failed.');
+        if (uploadData.success) {
+            // Pasul B: Trimitem URL-ul de S3 către ruta de OCR
+            const ocrRes = await fetch('http://localhost:4000/ocr-extract', {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${user.token}` 
+                },
+                body: JSON.stringify({ imageUrl: uploadData.file.fileUrl })
+            });
+            const ocrData = await ocrRes.json();
+            
+            setOcrResultText(ocrData.extractedText);
+            fetchPatient(); // Refresh listă fișiere
         }
     } catch (err) {
-        alert('Server or network error during OCR.');
+        alert("Eroare la procesarea OCR.");
     } finally {
         setOcrLoading(false);
-        // Clear the file input after use
-        event.target.value = null; 
     }
 };
 const handleAssignForm = async () => {
     if (!selectedTemplateId) return alert('Please select a template.');
 
     try {
-        const res = await fetch(`http://localhost:4000/patients/${id}/forms/assign`, {
+        const res = await fetch(`http://localhost:4000/forms/patients/${id}/assign`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${user.token}` },
             body: JSON.stringify({ templateId: selectedTemplateId }),
@@ -523,54 +604,60 @@ const handleAssignForm = async () => {
 const handleStartEdit = async (form) => {
     setEditingForm(form);
     
-    if (form.status === 'COMPLETED') {
-        // If already completed, load the completed content
-        setFormContent(form.completedContent);
+    // ⭐️ SCHIMBARE: Dacă formularul are deja conținut (chiar și DRAFT), îl folosim pe acela
+    if (form.completedContent || form.content) {
+        setFormContent(form.completedContent || form.content);
     } else {
-        // Fetch the original template content to start editing
+        // Dacă e prima dată, încercăm să-l luăm din template (backup)
         try {
-            const res = await fetch(`http://localhost:4000/templates/${form.templateId}`, {
+            const res = await fetch(`http://localhost:4000/forms/templates/${form.templateId}`, {
                 headers: { Authorization: `Bearer ${user.token}` },
             });
             const data = await res.json();
-            if (data.success) {
-                setFormContent(data.template.content);
-            } else {
-                alert('Could not load template content.');
-            }
+            if (data.success) setFormContent(data.template.content);
         } catch (err) {
-            alert('Server error loading template.');
+            console.error('Error loading content');
         }
     }
 };
 
-// ⭐️ NEW HANDLER: Save/Complete Form ⭐️
 const handleCompleteForm = async () => {
+    if (!sigCanvas.current) return;
+
+    if (sigCanvas.current.isEmpty()) {
+        return alert("Te rugăm să semnezi înainte de a finaliza.");
+    }
+
+    // ⭐️ FIX: Extragem imaginea direct de pe canvas, fără "trim"
+    // sigCanvas.current.getCanvas() ne dă acces la elementul HTML5 nativ
+    const canvas = sigCanvas.current.getCanvas();
+    const signatureImage = canvas.toDataURL('image/png');
+
     if (!editingForm || !formContent.trim()) return;
 
     try {
         const res = await fetch(`http://localhost:4000/forms/${editingForm.id}/complete`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${user.token}` },
-            body: JSON.stringify({ completedContent: formContent }),
+            body: JSON.stringify({ 
+                completedContent: formContent,
+                signature: signatureImage 
+            }),
         });
         
         const data = await res.json();
         
         if (data.success) {
-             // Update the local patient form list
             setPatient(prev => ({
                 ...prev,
                 PatientForms: prev.PatientForms.map(f => f.id === data.form.id ? data.form : f)
             }));
-            setEditingForm(null); // Close the editor
+            setEditingForm(null);
             setFormContent('');
-            alert('Form successfully completed and saved.');
-        } else {
-            alert(data.message || 'Failed to complete form.');
+            alert('Formular salvat cu succes!');
         }
     } catch (err) {
-        alert('Server error completing form.');
+        alert('Eroare la salvare.');
     }
 };
 const handleDeleteForm = async (formId) => {
@@ -769,7 +856,7 @@ const exportSinglePatientData = () => {
                                 onClick={() => handleStartEdit(form)} 
                                 className="btn-primary"
                             >
-                                {form.status === 'COMPLETED' ? 'View/Edit' : 'Complete Form'}
+                                {form.status === 'COMPLETED' ? 'View' : 'Complete Form'}
                             </button>
                             <button 
             onClick={() => handleDeleteForm(form.id)} 
@@ -778,6 +865,13 @@ const exportSinglePatientData = () => {
         >
             <span>🗑️</span>
                             </button>
+                            <button 
+    onClick={() => downloadFormPDF(form)} 
+    className="btn-primary" 
+    style={{ backgroundColor: '#2f3b52' }}
+>
+    📥 Descarcă PDF
+</button>
                         </li>
                     ))}
                 </ul>
@@ -797,18 +891,77 @@ const exportSinglePatientData = () => {
                             readOnly={editingForm.status === 'COMPLETED'}
                         />
 
-                        {editingForm.status !== 'COMPLETED' && (
-                            <button onClick={handleCompleteForm} className="btn-primary">
-                                Mark as Completed & Save Final
+{editingForm.status !== 'COMPLETED' && (
+    <div style={{ marginTop: '15px', padding: '10px', border: '1px solid #eee', background: '#f9f9f9' }}>
+        <p style={{ fontSize: '0.8rem', fontWeight: 'bold' }}>Semnează aici:</p>
+        <div style={{ background: '#fff', border: '1px solid #ccc' }}>
+            <SignatureCanvas 
+                ref={sigCanvas} // Legătura cu sigCanvas.current
+                penColor='black'
+                canvasProps={{
+                    width: 580, 
+                    height: 150, 
+                    className: 'sigCanvas'
+                }}
+            />
+        </div>
+        <button 
+            type="button" 
+            onClick={clearSignature} 
+            style={{ marginTop: '5px', fontSize: '0.7rem' }}
+        >
+            Șterge semnătura
+        </button>
+    </div>
+)}
+                       {/* 1. Butoanele de acțiune pentru formularele nefinalizate */}
+                       {editingForm.status !== 'COMPLETED' && (
+                            <div style={{ marginTop: '20px', display: 'flex', gap: '10px' }}>
+                                <button 
+                                    onClick={handleCompleteForm} 
+                                    className="btn-primary"
+                                    style={{ backgroundColor: '#4CAF50' }} // Verde pentru salvare
+                                >
+                                    Finalizează și Salvează Acordul
+                                </button>
+                                <button 
+                                    onClick={() => setEditingForm(null)} 
+                                    className="btn-secondary"
+                                >
+                                    Anulează
+                                </button>
+                            </div>
+                        )}
+
+                        {/* 2. Butonul de închidere pentru formularele deja finalizate */}
+                        {editingForm.status === 'COMPLETED' && (
+                            <button 
+                                onClick={() => setEditingForm(null)} 
+                                className="btn-secondary" 
+                                style={{ marginTop: '20px' }}
+                            >
+                                Închide Vizualizarea
                             </button>
                         )}
-                        <button onClick={() => setEditingForm(null)} className="btn-secondary" style={{ marginLeft: '10px' }}>
-                            Close
-                        </button>
-                        {editingForm.status === 'COMPLETED' && <p style={{ color: 'green', marginTop: '10px' }}>This form is finalized.</p>}
+
+                        {/* 3. Afișarea semnăturii dacă există */}
+                        {editingForm.status === 'COMPLETED' && editingForm.signature && (
+                            <div style={{ marginTop: '20px', borderTop: '1px solid #eee', paddingTop: '10px' }}>
+                                <p><strong>Semnătură Digitală:</strong></p>
+                                <img 
+                                    src={editingForm.signature} 
+                                    alt="Semnatura" 
+                                    style={{ border: '1px solid #ccc', maxWidth: '200px', backgroundColor: '#fff' }} 
+                                />
+                                <p style={{ fontSize: '0.8rem', color: '#888' }}>
+                                    Document semnat electronic la data de {new Date(editingForm.updatedAt).toLocaleString()}
+                                </p>
+                            </div>
+                        )}
                     </div>
                 </div>
             )}
+            
 <section className="patient-card">
     <h3 className="card-title">OCR Text Extractor</h3>
     <p style={{ fontSize: '0.9em', color: '#555' }}>
@@ -1125,18 +1278,18 @@ const exportSinglePatientData = () => {
             // --- FILE VIEW MODE: Show Image, Description, and Actions ---
             <>
                 <img 
-                    src={`http://localhost:4000${file.filePath}`}
-                    alt={file.description || file.fileName}
-                    onClick={() => setFullSizeUrl(`http://localhost:4000${file.filePath}`)}
-                    style={{ 
-                        width: '100%', 
-                        maxHeight: '200px', 
-                        objectFit: 'cover', 
-                        borderRadius: '4px', 
-                        marginBottom: '10px', 
-                        cursor: 'pointer' 
-                    }}
-                />
+    src={getFileUrl(file.filePath || file.fileUrl)} // Folosim helper-ul aici
+    alt={file.description || file.fileName}
+    onClick={() => setFullSizeUrl(getFileUrl(file.filePath || file.fileUrl))}
+    style={{ 
+        width: '100%', 
+        maxHeight: '200px', 
+        objectFit: 'cover', 
+        borderRadius: '4px', 
+        marginBottom: '10px', 
+        cursor: 'pointer' 
+    }}
+/>
                 
                 <p style={{ fontSize: '0.9rem', margin: '0 0 5px 0' }}>
                     {file.description || file.fileName}
@@ -1227,17 +1380,18 @@ const exportSinglePatientData = () => {
         title="Click to view full size"
     >
     <img 
-        src={`http://localhost:4000${file.fileUrl}`}
-        alt={file.description} 
-        // Style the image to be smaller and more manageable in the grid view
-        style={{ 
-            width: '100%', 
-            maxHeight: '200px', 
-            objectFit: 'cover', // Ensures the image covers the area nicely
-            borderRadius: '4px', 
-            marginBottom: '10px' 
-        }}
-    />
+    src={getFileUrl(file.filePath || file.fileUrl)} // Folosim helper-ul aici
+    alt={file.description || file.fileName}
+    onClick={() => setFullSizeUrl(getFileUrl(file.filePath || file.fileUrl))}
+    style={{ 
+        width: '100%', 
+        maxHeight: '200px', 
+        objectFit: 'cover', 
+        borderRadius: '4px', 
+        marginBottom: '10px', 
+        cursor: 'pointer' 
+    }}
+/>
     </div>
     
     <p style={{ margin: '0 0 5px 0' }}>
@@ -1275,34 +1429,33 @@ const exportSinglePatientData = () => {
       {/* Existing General Notes Section */}
       
       {fullSizeUrl && (
-        <div 
-          onClick={() => setFullSizeUrl(null)} // Click anywhere in the overlay to close
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            width: '100%',
-            height: '100%',
-            backgroundColor: 'rgba(0, 0, 0, 0.9)',
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            zIndex: 1000,
-          }}
-        >
-          <img 
-            src={fullSizeUrl} 
-            alt="Full size view" 
-            // Ensures image fits within the viewport
-            style={{ 
-                maxWidth: '90%', 
-                maxHeight: '90%', 
-                objectFit: 'contain',
-                borderRadius: '8px'
-            }}
-          />
-        </div>
-      )}
+  <div 
+    onClick={() => setFullSizeUrl(null)}
+    style={{
+      position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
+      backgroundColor: 'rgba(0, 0, 0, 0.9)', display: 'flex',
+      justifyContent: 'center', alignItems: 'center', zIndex: 1000,
+    }}
+  >
+    <img 
+      alt="Full size view" 
+      src={
+        /* 1. Verificăm dacă URL-ul conține deja Amazon S3 oriunde în el */
+        fullSizeUrl.includes('amazonaws.com') 
+          ? (fullSizeUrl.includes('http://localhost:4000') 
+              ? fullSizeUrl.split('http://localhost:4000')[1] // Dacă e lipit de localhost, îl tăiem și luăm doar partea cu https
+              : fullSizeUrl)
+          : (fullSizeUrl.startsWith('http') 
+              ? fullSizeUrl 
+              : `http://localhost:4000${fullSizeUrl}`)
+      } 
+      style={{ 
+        maxWidth: '90%', maxHeight: '90%', 
+        objectFit: 'contain', borderRadius: '8px' 
+      }} 
+    />
+  </div>
+)}
 
     </div>
     

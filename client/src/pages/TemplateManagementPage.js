@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useContext, useCallback } from 'react';
 import { AuthContext } from '../AuthContext'; 
 import { useNavigate } from 'react-router-dom';
+import { useRef } from 'react';
+
 
 function TemplateManagementPage() {
     const { user } = useContext(AuthContext);
@@ -20,11 +22,49 @@ function TemplateManagementPage() {
     const [editTitle, setEditTitle] = useState('');
     const [editContent, setEditContent] = useState('');
 
+    const textAreaRef = useRef(null);
+    const editTextAreaRef = useRef(null);
+
+    const variables = [
+        { label: 'Nume Pacient', value: '{{PATIENT_NAME}}' },
+        { label: 'Vârstă', value: '{{PATIENT_AGE}}' },
+        { label: 'Data Nașterii', value: '{{PATIENT_BIRTHDAY}}' },
+        { label: 'Telefon', value: '{{PATIENT_PHONE}}' },
+        { label: 'Data Curentă', value: '{{CURRENT_DATE}}' },
+        { label: 'Semnătură Doctor', value: '{{DOCTOR_SIGNATURE}}' }
+    ];
+    
+    const insertVariable = (variable, isEdit = false) => {
+        const ref = isEdit ? editTextAreaRef : textAreaRef;
+        const content = isEdit ? editContent : newContent;
+        const setContent = isEdit ? setEditContent : setNewContent;
+    
+        if (ref.current) {
+            const start = ref.current.selectionStart; // Poziția de început a selecției
+            const end = ref.current.selectionEnd;     // Poziția de sfârșit a selecției
+    
+            // Construim noul conținut: ce era înainte + variabila + ce era după
+            const textBefore = content.substring(0, start);
+            const textAfter = content.substring(end);
+            const updatedText = textBefore + variable + textAfter;
+    
+            setContent(updatedText);
+    
+            // Repoziționăm cursorul după variabilă după ce se randează
+            setTimeout(() => {
+                ref.current.focus();
+                ref.current.setSelectionRange(start + variable.length, start + variable.length);
+            }, 0);
+        } else {
+            // Fallback dacă ref-ul nu e gata
+            setContent(prev => prev + variable);
+        }
+    };
 
     const fetchTemplates = useCallback(async () => {
         setLoading(true);
         try {
-            const res = await fetch('http://localhost:4000/templates', {
+            const res = await fetch('http://localhost:4000/forms/templates', {
                 headers: { Authorization: `Bearer ${user.token}` },
             });
             const data = await res.json();
@@ -54,7 +94,7 @@ function TemplateManagementPage() {
 
         setLoading(true);
         try {
-            const res = await fetch('http://localhost:4000/templates', {
+            const res = await fetch('http://localhost:4000/forms/templates', {
                 method: 'POST',
                 headers: { 
                     'Content-Type': 'application/json',
@@ -85,7 +125,7 @@ function TemplateManagementPage() {
             return;
         }
         try {
-            const res = await fetch(`http://localhost:4000/templates/${id}`, {
+            const res = await fetch(`http://localhost:4000/forms/templates/${id}`, {
                 method: 'DELETE',
                 headers: { Authorization: `Bearer ${user.token}` },
             });
@@ -120,7 +160,7 @@ function TemplateManagementPage() {
         
         setLoading(true);
         try {
-            const res = await fetch(`http://localhost:4000/templates/${editingTemplate.id}`, {
+            const res = await fetch(`http://localhost:4000/forms/templates/${editingTemplate.id}`, {
                 method: 'PUT',
                 headers: { 
                     'Content-Type': 'application/json',
@@ -146,6 +186,7 @@ function TemplateManagementPage() {
 
 
     return (
+        
         <div className="container" style={{ padding: '20px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '25px',color: '#2f3b52', backgroundColor: '#f5f5f5', padding: '10px 15px', borderRadius: '8px' }}>
                 <h1> Agreement Templates</h1>
@@ -177,16 +218,37 @@ function TemplateManagementPage() {
                                 required
                             />
                             <textarea
-                                placeholder="Template Content (This will be the default text for all new agreements.)"
+                                ref={textAreaRef}
                                 value={newContent}
                                 onChange={(e) => setNewContent(e.target.value)}
-                                rows="10"
-                                style={{ width: '100%', padding: '10px', marginBottom: '20px', borderRadius: '5px', border: '1px solid #ddd', resize: 'vertical' }}
+                                placeholder="Scrie textul template-ului aici..."
+                                rows="15"
+                                style={{ width: '100%', padding: '10px', fontFamily: 'monospace', fontSize: '14px' }}
                                 required
                             />
+                          <div className="variable-toolbar" style={{ marginTop: '10px', display: 'flex', gap: '5px', flexWrap: 'wrap', marginBottom: '15px' }}>
+    {variables.map(v => (
+        <button 
+            key={v.value}
+            type="button" 
+            onClick={() => insertVariable(v.value, false)} // ⭐️ Changed 'edit' to false
+            style={{ fontSize: '0.65rem', padding: '3px 6px', borderRadius: '4px', border: '1px solid #00c6a7', background: 'white', color: '#00c6a7', cursor: 'pointer' }}
+        >
+            + {v.label}
+        </button>
+    ))}
+    <button 
+        type="button"
+        onClick={() => insertVariable('[ ]', false)} // ⭐️ Changed 'edit' to false
+        style={{ fontSize: '0.65rem', padding: '3px 6px', borderRadius: '4px', border: '1px solid #ff9800', background: 'white', color: '#ff9800', cursor: 'pointer' }}
+    >
+        + Checkbox
+    </button>
+</div>
                             <button type="submit" disabled={loading} className="btn-primary" style={{ width: '100%' }}>
                                 {loading ? 'Saving...' : 'Save New Template'}
                             </button>
+
                         </form>
                     </div>
                 </div>
@@ -246,14 +308,35 @@ function TemplateManagementPage() {
                                 style={{ width: '100%', padding: '10px', marginBottom: '10px', borderRadius: '5px', border: '1px solid #ddd' }}
                                 required
                             />
-                            <textarea
-                                value={editContent}
-                                onChange={(e) => setEditContent(e.target.value)}
-                                rows="12"
-                                style={{ width: '100%', padding: '10px', marginBottom: '15px', borderRadius: '5px', border: '1px solid #ddd', resize: 'vertical' }}
-                                required
-                            />
+                          <textarea
+                            ref={editTextAreaRef}
+                            value={editContent}
+                            onChange={(e) => setEditContent(e.target.value)}
+                            rows="15"
+                            style={{ width: '100%', padding: '10px', fontFamily: 'monospace' }}
+                        />
+                            
+                            <div className="variable-toolbar" style={{ marginBottom: '15px', display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
+    {variables.map(v => (
+        <button 
+            key={v.value}
+            type="button"
+            onClick={() => insertVariable(v.value, true)} // ⭐️ This is correct for the modal
+            style={{ fontSize: '0.7rem', padding: '5px', borderRadius: '4px', border: '1px solid #00c6a7', background: 'white', color: '#00c6a7', cursor: 'pointer' }}
+        >
+            + {v.label}
+        </button>
+    ))}
+    <button 
+        type="button"
+        onClick={() => insertVariable('[ ]', true)} 
+        style={{ fontSize: '0.65rem', padding: '3px 6px', borderRadius: '4px', border: '1px solid #ff9800', background: 'white', color: '#ff9800', cursor: 'pointer' }}
+    >
+        + Checkbox
+    </button>
+</div>
                             {error && <p style={{ color: 'red' }}>{error}</p>}
+
                             <button type="submit" disabled={loading} className="btn-primary">
                                 Save Changes
                             </button>

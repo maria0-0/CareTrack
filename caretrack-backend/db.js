@@ -27,7 +27,11 @@ role: {
   type: DataTypes.STRING,
   defaultValue: 'doctor', // Implicit, toată lumea e doctor
   allowNull: false
-}
+},
+signature: { 
+  type: Sequelize.TEXT('long'), 
+  allowNull: true
+ }
 });
 
 const Patient = sequelize.define('Patient', {
@@ -223,7 +227,11 @@ const PatientForm = sequelize.define('PatientForm', {
   doctorId: {
       type: DataTypes.INTEGER,
       allowNull: false
-  }
+  },
+  signature: {
+    type: Sequelize.TEXT, // Stocăm imaginea ca string lung (Base64)
+    allowNull: true
+}
 });
 
 const AuditLog = sequelize.define('AuditLog', {
@@ -244,6 +252,22 @@ const AuditLog = sequelize.define('AuditLog', {
     allowNull: false
   }
 });
+
+const logActivity = async (req, action, details = '') => {
+  try {
+    // Importăm modelul AuditLog local pentru a evita referințele circulare
+    const { AuditLog } = require('./db'); 
+    await AuditLog.create({
+      action,
+      details,
+      doctorId: req.user ? req.user.id : null,
+      ipAddress: req.ip || (req.headers && req.headers['x-forwarded-for']) || req.socket.remoteAddress || '0.0.0.0'
+    });
+  } catch (err) {
+    console.error("Audit Log Error:", err);
+  }
+};
+
 
 Patient.belongsTo(User, { foreignKey: 'doctorId' });
 User.hasMany(Patient, { foreignKey: 'doctorId' , onDelete: 'CASCADE' });
@@ -299,5 +323,6 @@ module.exports = {
   MedicalRecord,
   FormTemplate,
   PatientForm,
-  AuditLog
+  AuditLog,
+  logActivity
 };

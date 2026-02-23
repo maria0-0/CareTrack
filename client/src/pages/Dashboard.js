@@ -6,6 +6,8 @@ import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import {useNavigate} from 'react-router-dom';
 import { Link } from 'react-router-dom';
+import SignatureCanvas from 'react-signature-canvas';
+import { useRef } from 'react';
 
 function Dashboard() {
   const { user } = useContext(AuthContext);
@@ -44,7 +46,47 @@ function Dashboard() {
   const limit = 10; // Câți pacienți vrei pe pagină
   const [auditLogs, setAuditLogs] = useState([]);
   const isAdmin = user.role === 'admin';
+  const [totalPatientsCount, setTotalPatientsCount] = useState(0); // Nouă stare pentru număr total
+  const [totalStats, setTotalStats] = useState(0);
+  const sigCanvas = useRef(null);
 
+  const saveDoctorSignature = async () => {
+    if (!sigCanvas.current) return;
+
+    if (sigCanvas.current.isEmpty()) {
+        return alert("Vă rugăm să semnați înainte de a salva.");
+    }
+
+    const canvas = sigCanvas.current.getCanvas(); 
+    const signatureData = canvas.toDataURL('image/png');
+
+    try {
+        const res = await fetch('http://localhost:4000/profile/signature', {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${user.token}`,
+            },
+            body: JSON.stringify({ signature: signatureData }),
+        });
+
+        const data = await res.json();
+        if (data.success) {
+            alert("Semnătura a fost salvată cu succes!");
+            const currentUser = JSON.parse(localStorage.getItem('user'));
+    if (currentUser) {
+        currentUser.signature = signatureData; // signatureData este Base64-ul creat de canvas
+        localStorage.setItem('user', JSON.stringify(currentUser));
+    }
+            window.location.reload();
+        } else {
+            alert(data.message || "Eroare la salvare.");
+        }
+    } catch (err) {
+        console.error("Signature save error:", err);
+        alert("Eroare de rețea la salvarea semnăturii.");
+    }
+};
   const handleEditClick = (id) => {
     setEditingPatientId(id);
   };
@@ -61,20 +103,21 @@ function Dashboard() {
   };
   const fetchPatients = useCallback(async () => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(
-        `http://localhost:4000/patients?page=${currentPage}&limit=${limit}&search=${searchTerm}`, {
-        headers: { 'Authorization': `Bearer ${token}` },
+      // Păstrăm parametrii de paginare actuali
+      const res = await fetch(`http://localhost:4000/patients?page=${currentPage}&search=${searchTerm}`, {
+        headers: { Authorization: `Bearer ${user.token}` },
       });
-      const data = await response.json();
+      const data = await res.json();
+      
       if (data.success) {
-        setPatients(data.patients);
+        setPatients(data.patients); // Ce vedem în tabel (max 10)
+        setTotalStats(data.totalPatients); // Numărul TOTAL din toată baza de date
         setTotalPages(data.totalPages);
       }
     } catch (err) {
-      console.error('Fetch error:', err);
+      setError('Failed to fetch patients.');
     }
-  }, [currentPage, searchTerm]);
+  }, [user.token, currentPage, searchTerm]);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -257,37 +300,49 @@ useEffect(() => {
     
   };
 
-const handleDeleteAccount = async () => {
-  if (!user || !user.token) return;
-  
-  const confirmation = window.confirm(
-      'WARNING: This will permanently delete your account and ALL associated patient data (appointments, notes, files). Are you absolutely sure you want to proceed?'
-  );
+  const handleDeleteAccount = async () => {
+    // Mesaj de avertizare stilizat
+    const firstWarning = window.confirm(
+        "🚨 ATENȚIE MAXIMĂ!\n\nAceastă acțiune va șterge DEFINITIV contul tău și TOȚI pacienții salvați. Pentru siguranță, vom descărca automat o arhivă cu datele tale înainte de ștergere."
+    );
 
-  if (!confirmation) {
-      return;
-  }
+    if (!firstWarning) return;
 
-  try {
-      const res = await fetch('http://localhost:4000/account', {
-          method: 'DELETE',
-          headers: {
-              Authorization: `Bearer ${user.token}`,
-          },
-      });
+    // 1. DESCĂRCARE AUTOMATĂ BACKUP
+    // Folosim funcția de export pe care o ai deja
+    try {
+        exportPatientsToCSV();
+        alert("💾 Backup-ul a fost generat. Te rugăm să verifici folderul 'Downloads' înainte de a continua.");
+    } catch (err) {
+        alert("Eroare la generarea backup-ului. Ștergerea a fost oprită pentru a preveni pierderea datelor.");
+        return;
+    }
 
-      if (res.ok) {
-          // Success: Log out the user and redirect to login page
-          logout(); 
-          navigate('/login');
-          alert("Account successfully deleted.");
-      } else {
-          const data = await res.json();
-          alert(data.message || 'Failed to delete account.');
-      }
-  } catch (err) {
-      alert('Server error during deletion process.');
-  }
+    // 2. CONFIRMARE FINALĂ
+    const finalConfirmation = window.prompt(
+        "Pentru a confirma ștergerea DEFINITIVĂ, scrie 'STERGE TOT' în căsuța de mai jos:"
+    );
+
+    if (finalConfirmation !== "STERGE TOT") {
+        alert("Cod incorect. Ștergerea a fost anulată.");
+        return;
+    }
+
+    // 3. APELUL CĂTRE BACKEND
+    try {
+        const res = await fetch('http://localhost:4000/account', {
+            method: 'DELETE',
+            headers: { Authorization: `Bearer ${user.token}` },
+        });
+
+        if (res.ok) {
+            alert("Toate datele au fost șterse cu succes. La revedere!");
+            logout();
+            navigate('/login');
+        }
+    } catch (err) {
+        alert("Eroare la comunicarea cu serverul.");
+    }
 };
 
 const formatLocalDatetime = (isoString) => {
@@ -718,7 +773,15 @@ const handleEditAppointmentClick = (appointment) => {
     >
         Audit History
     </button>
-)}         <Link to="/templates" className="nav-link">
+)}    
+{user && user.role === 'admin' && (
+        <Link to="/staff" className="nav-link">
+            <button className={currentTab === 'staff' ? 'active' : ''} onClick={() => setCurrentTab('staff')}>
+                Staff Management
+            </button>
+        </Link>
+    )}
+     <Link to="/templates" className="nav-link">
     <button className={currentTab === 'templates' ? 'active' : ''} onClick={() => setCurrentTab('templates')}>
         Manage Templates
     </button>
@@ -780,9 +843,40 @@ const handleEditAppointmentClick = (appointment) => {
                   {/* You can add more overview cards here */}
                   <section className="dashboard-section">
                       <h3>Quick Stats</h3>
-                      <p>Total Active Patients: {patients.length}</p>
+                      <div className="stat-card">
+  <h3>Pacienți Activi</h3>
+  <p className="stat-number">{totalStats}</p> 
+</div>
                       <p>Upcoming Appointments: {appointments.filter(a => new Date(a.date) >= new Date()).length}</p>
                   </section>
+                  <section className="dashboard-section">
+    <h3>✒️ Semnătura Mea Profesională</h3>
+    <p style={{ fontSize: '0.9rem', color: '#666' }}>Această semnătură va fi aplicată automat pe toate documentele tale.</p>
+    <div style={{ border: '1px solid #ddd', background: '#fff', width: '300px', borderRadius: '8px' }}>
+        <SignatureCanvas 
+            ref={sigCanvas}
+            penColor="black"
+            canvasProps={{ width: 300, height: 100, className: 'sigCanvas' }}
+        />
+    </div>
+    <div style={{ marginTop: '10px', display: 'flex', gap: '10px' }}>
+        <button onClick={saveDoctorSignature} className="btn-primary">Salvează Semnătura</button>
+        <button onClick={() => sigCanvas.current.clear()} className="btn-secondary">Șterge</button>
+        
+    
+    </div>
+    {user && user.signature && (
+    <div style={{ marginTop: '20px' }}>
+        <p><strong>Semnătura ta salvată:</strong></p>
+        <img 
+            src={user.signature} 
+            alt="Preview Semnatura" 
+            style={{ border: '1px solid #00c6a7', borderRadius: '4px', maxWidth: '200px' }} 
+        />
+    </div>
+)}
+    
+</section>
               </>
           )}
 

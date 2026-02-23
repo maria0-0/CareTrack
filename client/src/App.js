@@ -11,6 +11,8 @@ import PatientPage from './pages/PatientPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage'; 
 import ResetPasswordPage from './pages/ResetPasswordPage'; 
 import TemplateManagementPage from './pages/TemplateManagementPage';
+import StaffManagementPage from './pages/StaffManagementPage';
+
 
 // Component to protect routes (You already have this logic)
 const PrivateRoute = () => {
@@ -40,6 +42,8 @@ function App() {
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/patient/:id" element={<PatientPage />} />
             <Route path="/templates" element={<TemplateManagementPage />} />
+            <Route path="/staff" element={<StaffManagementPage />} />
+
               </Route>
 
           {/* Catch-all route for 404s */}

@@ -38,14 +38,12 @@ function LoginPage() {
   
       const data = await response.json();
       if (response.ok && data.success) {
-        login({ 
-          email: data.email, 
-          token: data.token,
-          firstName: data.firstName, // New
-          lastName: data.lastName,   // New
-         role: data.role // New
-      }); 
-        localStorage.setItem('token', data.token); // (optional) persist token
+        
+        const userToSave = {
+          ...data.user,
+          token: data.token
+      };
+      login(userToSave);
         navigate('/dashboard');
       }
        else {
