@@ -7,6 +7,7 @@ const { logActivity } = require('../utils/logger');
 const { Op } = require('sequelize');
 const crypto = require('crypto');
 const nodemailer = require('nodemailer');
+const { authLimiter, signupLimiter } = require('../middleware/rateLimiter');
 
 const transporter = nodemailer.createTransport({
   service: 'gmail',
@@ -16,7 +17,7 @@ const transporter = nodemailer.createTransport({
   }
 });
 
-router.post('/login', async (req, res) => {
+router.post('/login', authLimiter, async (req, res) => {
   const { email, password } = req.body;
   try {
     const user = await User.findOne({ where: { email } });
@@ -63,7 +64,7 @@ router.post('/login', async (req, res) => {
   }
 });
 
-router.post('/signup', async (req, res) => {
+router.post('/signup', signupLimiter, async (req, res) => {
   const { email, password, firstName, lastName } = req.body;
 
   try {
@@ -92,7 +93,7 @@ router.post('/signup', async (req, res) => {
   }
 });
 
-router.post('/forgot-password', async (req, res) => {
+router.post('/forgot-password', authLimiter, async (req, res) => {
   const { email } = req.body;
 
   try {
@@ -122,7 +123,7 @@ router.post('/forgot-password', async (req, res) => {
   }
 });
 
-router.post('/reset-password', async (req, res) => {
+router.post('/reset-password', authLimiter, async (req, res) => {
   const { token, newPassword } = req.body;
 
   try {
