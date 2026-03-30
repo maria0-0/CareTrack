@@ -1,0 +1,132 @@
+.staff-page-wrapper {
+    padding: 30px;
+    background-color: #f8fafc;
+    min-height: 100vh;
+    font-family: 'Inter', sans-serif;
+}
+
+.staff-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+}
+
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.btn-back {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    padding: 10px 18px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    color: #475569;
+    transition: all 0.2s;
+}
+
+.btn-back:hover {
+    background: #f1f5f9;
+    border-color: #cbd5e1;
+}
+
+.staff-card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+}
+
+.staff-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.staff-table th {
+    background: #f1f5f9;
+    padding: 15px 20px;
+    font-size: 13px;
+    text-transform: uppercase;
+    color: #64748b;
+    letter-spacing: 0.05em;
+}
+
+.staff-table td {
+    padding: 15px 20px;
+    border-bottom: 1px solid #f1f5f9;
+    color: #1e293b;
+}
+
+.user-name-cell {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-weight: 500;
+}
+
+.user-avatar {
+    width: 35px;
+    height: 35px;
+    background: #e2e8f0;
+    color: #475569;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+/* Badge-uri de Rol */
+.badge {
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.role-admin {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.role-doctor {
+    background: #f1f5f9;
+    color: #475569;
+}
+
+/* Butoane Acțiune */
+.btn-toggle {
+    padding: 8px 16px;
+    border-radius: 6px;
+    border: none;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.btn-toggle.promote {
+    background: #3b82f6;
+    color: white;
+}
+
+.btn-toggle.demote {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.btn-toggle:hover {
+    opacity: 0.85;
+    transform: translateY(-1px);
+}
+
+.current-user-tag {
+    color: #94a3b8;
+    font-size: 12px;
+    font-style: italic;
+}

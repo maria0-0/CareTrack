@@ -1,0 +1,81 @@
+.App {
+  text-align: center;
+}
+
+
+
+
+
+
+
+.App-link {
+  color: #61dafb;
+}
+/* client/src/App.css (Add or update these button styles) */
+
+/* General button styling to achieve the round, flat look */
+.btn-primary, .btn-secondary, .btn-danger {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 8px; /* ⭐️ Make the buttons rounder ⭐️ */
+  cursor: pointer;
+  font-weight: bold;
+  transition: background-color 0.2s, box-shadow 0.2s;
+  text-decoration: none;
+  display: inline-block;
+  box-shadow: none; /* ⭐️ Remove any unwanted shadows ⭐️ */
+}
+
+/* Primary Button (Matching your Green/Teal color) */
+.btn-primary {
+  background-color: #00a896; /* Use your specific green color code */
+  color: white;
+}
+.btn-primary:hover {
+  background-color: #008f80; /* Slightly darker hover */
+}
+
+/* ⭐️ Secondary Button (For Cancel/View - Make it flat and rounded) ⭐️ */
+.btn-secondary {
+  background-color: #e0e0e0; /* A light, neutral gray */
+  color: #333;
+  border: 1px solid #c0c0c0; /* Optional: A very thin light border */
+}
+.btn-secondary:hover {
+  background-color: #c0c0c0;
+}
+.icon-button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 5px; /* Adjust padding for size */
+  margin: 0 2px;
+  border-radius: 50%; /* Makes it round */
+  transition: background-color 0.2s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px; /* Adjust width/height for size */
+  height: 30px; 
+}
+
+/* Style for when the mouse hovers over the button */
+.icon-button:hover {
+  background-color: #f0f0f0; 
+}
+
+/* Specific colors for the actions */
+.icon-button.edit-btn {
+  color: #007bff; /* Blue for Edit */
+}
+.icon-button.delete-btn {
+  color: #dc3545; /* Red for Delete */
+}
+@keyframes App-logo-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
