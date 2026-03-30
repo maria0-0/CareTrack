@@ -4,7 +4,7 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.STRING,
       allowNull: false
     },
-    filePath: {
+    fileUrl: {
       type: DataTypes.STRING,
       allowNull: false
     },

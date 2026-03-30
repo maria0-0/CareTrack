@@ -4,6 +4,15 @@ const { Appointment, Patient, AppointmentFile } = require('../models');
 const { Op } = require('sequelize');
 const { authenticateToken } = require('../middleware/auth');
 const { upload } = require('../middleware/multer');
+const { S3Client, DeleteObjectCommand } = require('@aws-sdk/client-s3');
+
+const s3 = new S3Client({
+    region: process.env.AWS_REGION,
+    credentials: {
+        accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+    }
+});
 
 router.get('/', authenticateToken, async (req, res) => {
   try {
@@ -257,7 +266,7 @@ router.post('/:appointmentId/files', authenticateToken, upload.single('file'), a
       
       const newFile = await AppointmentFile.create({
           fileName: req.file.originalname,
-          filePath: `/uploads/${req.file.filename}`,
+          fileUrl: req.file.location, // S3 Public URL
           fileMimeType: req.file.mimetype,
           description: description,
           appointmentId: appointmentId
@@ -286,6 +295,21 @@ router.delete('/files/:fileId', authenticateToken, async (req, res) => {
           return res.status(404).json({ success: false, message: 'File not found or unauthorized.' });
       }
       
+      // 1. Delete from S3 if configured
+      const fileKey = file.fileUrl.split(`${process.env.AWS_S3_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/`)[1];
+      if (fileKey) {
+          try {
+              const deleteParams = {
+                  Bucket: process.env.AWS_S3_BUCKET_NAME,
+                  Key: fileKey,
+              };
+              await s3.send(new DeleteObjectCommand(deleteParams));
+              console.log(`[AWS] Fișier șters din S3 (Programări): ${fileKey}`);
+          } catch (s3Err) {
+              console.error("[AWS] Eroare la ștergerea din S3:", s3Err);
+          }
+      }
+
       await file.destroy();
 
       res.json({ success: true, message: 'File record deleted successfully.' });
