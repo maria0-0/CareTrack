@@ -117,4 +117,25 @@ router.put('/profile/signature', authenticateToken, async (req, res) => {
     }
 });
 
+// Proxy route for images to bypass CORS issues in PDF generation
+router.get('/proxy-image', authenticateToken, async (req, res) => {
+  const { url } = req.query;
+  if (!url) return res.status(400).send('URL is required');
+
+  try {
+    const axios = require('axios');
+    const response = await axios({
+      url,
+      method: 'GET',
+      responseType: 'stream'
+    });
+
+    res.set('Content-Type', response.headers['content-type']);
+    response.data.pipe(res);
+  } catch (error) {
+    console.error('Error proxying image:', error.message);
+    res.status(500).send('Error fetching image');
+  }
+});
+
 module.exports = router;

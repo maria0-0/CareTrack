@@ -31,11 +31,34 @@ function PatientAgreements({ patient, user, onRefresh }) {
     }
   }, [user.token]);
 
+  const toDataURL = async (url) => {
+    try {
+      console.log(`[PDF] Fetching signature via proxy from: ${url}`);
+      // Use the backend proxy to bypass CORS
+      const proxyUrl = `${API_URL}/proxy-image?url=${encodeURIComponent(url)}`;
+      const response = await fetch(proxyUrl, {
+        headers: { Authorization: `Bearer ${user.token}` }
+      });
+
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      const blob = await response.blob();
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+    } catch (err) {
+      console.error(`[PDF] Error in toDataURL for ${url}:`, err);
+      throw err;
+    }
+  };
+
   useEffect(() => {
     fetchTemplates();
   }, [fetchTemplates]);
 
-  const downloadFormPDF = (form) => {
+  const downloadFormPDF = async (form) => {
     const doc = new jsPDF();
     const margin = 20;
     const pageWidth = doc.internal.pageSize.getWidth();
@@ -55,9 +78,20 @@ function PatientAgreements({ patient, user, onRefresh }) {
     if (currentY > 230) { doc.addPage(); currentY = 20; }
 
     doc.setFont("helvetica", "bold");
-    doc.text("Semnătură Pacient:", margin, currentY);
+    doc.text("Semnatura Pacient:", margin, currentY);
+
     if (form.signature) {
-      doc.addImage(form.signature, 'PNG', margin, currentY + 5, 45, 15);
+      try {
+        const patientSigData = form.signature.startsWith('data:')
+          ? form.signature
+          : await toDataURL(form.signature);
+        doc.addImage(patientSigData, 'PNG', margin, currentY + 5, 45, 15);
+      } catch (e) {
+        console.error("Error adding patient signature:", e);
+        doc.setFont("helvetica", "italic");
+        doc.setFontSize(8);
+        doc.text("[Eroare format semnatura pacient]", margin, currentY + 10);
+      }
     } else {
       doc.setFont("helvetica", "italic");
       doc.text("____________________ (nesemnat)", margin, currentY + 10);
@@ -65,12 +99,16 @@ function PatientAgreements({ patient, user, onRefresh }) {
 
     const rightCol = pageWidth / 2 + 10;
     doc.setFont("helvetica", "bold");
-    doc.text("Semnătură Medic:", rightCol, currentY);
+    doc.text("Semnatura Medic:", rightCol, currentY);
 
     if (user && user.signature) {
       try {
-        doc.addImage(user.signature, 'PNG', rightCol, currentY + 5, 40, 15);
+        const doctorSigData = user.signature.startsWith('data:')
+          ? user.signature
+          : await toDataURL(user.signature);
+        doc.addImage(doctorSigData, 'PNG', rightCol, currentY + 5, 40, 15);
       } catch (e) {
+        console.error("Error adding doctor signature:", e);
         doc.setFontSize(8);
         doc.text("[Eroare format imagine medic]", rightCol, currentY + 10);
       }
@@ -78,7 +116,7 @@ function PatientAgreements({ patient, user, onRefresh }) {
       doc.setFont("helvetica", "italic");
       doc.setFontSize(9);
       doc.text("__________________________", rightCol, currentY + 10);
-      doc.text("(Semnătura neconfigurată)", rightCol, currentY + 15);
+      doc.text("(Semnatura neconfigurata)", rightCol, currentY + 15);
     }
 
     currentY += 25;
@@ -182,7 +220,7 @@ function PatientAgreements({ patient, user, onRefresh }) {
         {patient.PatientForms && patient.PatientForms.map(form => (
           <li key={form.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span>
-              <strong>{form.title}</strong> 
+              <strong>{form.title}</strong>
               <span style={{ marginLeft: '15px', color: form.status === 'COMPLETED' ? 'green' : 'orange', fontWeight: 'bold' }}>({form.status})</span>
             </span>
             <button onClick={() => handleStartEdit(form)} className="btn-primary">{form.status === 'COMPLETED' ? 'View' : 'Complete Form'}</button>

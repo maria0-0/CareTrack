@@ -84,30 +84,34 @@ function PatientFilesList({ patient, user, onRefresh }) {
         <button type="submit">Save File Record</button>
       </form>
 
-      {(patient.PatientFiles || []).length > 0 ? (
-        <div className="file-grid">
-          {(patient.PatientFiles || []).map((file) => (
-            <div key={file.id} style={{ border: '1px solid #ddd', borderRadius: '8px', padding: '10px', boxShadow: '0 1px 4px rgba(0,0,0,0.05)', backgroundColor: '#fafafa' }}>
-              <div onClick={() => setFullSizeUrl(getFileUrl(file.filePath || file.fileUrl))} style={{ cursor: 'pointer', marginBottom: '10px' }} title="Click to view full size">
-                <img 
-                  src={getFileUrl(file.filePath || file.fileUrl)} 
-                  alt={file.description || file.fileName}
-                  style={{ width: '100%', maxHeight: '200px', objectFit: 'cover', borderRadius: '4px', marginBottom: '10px' }}
-                />
+      {(() => {
+        const filteredFiles = (patient.PatientFiles || []).filter(file => file.description !== 'OCR Scan');
+        
+        return filteredFiles.length > 0 ? (
+          <div className="file-grid">
+            {filteredFiles.map((file) => (
+              <div key={file.id} style={{ border: '1px solid #ddd', borderRadius: '8px', padding: '10px', boxShadow: '0 1px 4px rgba(0,0,0,0.05)', backgroundColor: '#fafafa' }}>
+                <div onClick={() => setFullSizeUrl(getFileUrl(file.filePath || file.fileUrl))} style={{ cursor: 'pointer', marginBottom: '10px' }} title="Click to view full size">
+                  <img 
+                    src={getFileUrl(file.filePath || file.fileUrl)} 
+                    alt={file.description || file.fileName}
+                    style={{ width: '100%', maxHeight: '200px', objectFit: 'cover', borderRadius: '4px', marginBottom: '10px' }}
+                  />
+                </div>
+                <p style={{ margin: '0 0 5px 0' }}><strong>Description:</strong> {file.description}</p>
+                <small style={{ color: '#888', display: 'block', marginBottom: '10px' }}>
+                  Added: {new Date(file.createdAt).toLocaleDateString()}
+                </small>
+                <button onClick={() => handleDeleteFile(file.id)} style={{ backgroundColor: '#f44336', color: 'white', border: 'none', padding: '5px 10px', borderRadius: '4px', cursor: 'pointer' }}>
+                  Delete
+                </button>
               </div>
-              <p style={{ margin: '0 0 5px 0' }}><strong>Description:</strong> {file.description}</p>
-              <small style={{ color: '#888', display: 'block', marginBottom: '10px' }}>
-                Added: {new Date(file.createdAt).toLocaleDateString()}
-              </small>
-              <button onClick={() => handleDeleteFile(file.id)} style={{ backgroundColor: '#f44336', color: 'white', border: 'none', padding: '5px 10px', borderRadius: '4px', cursor: 'pointer' }}>
-                Delete
-              </button>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <p>No files or photos recorded for this patient yet.</p>
-      )}
+            ))}
+          </div>
+        ) : (
+          <p>No files or photos recorded for this patient yet.</p>
+        );
+      })()}
 
       {/* Full size viewer modal */}
       {fullSizeUrl && (

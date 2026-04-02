@@ -113,4 +113,4 @@ This project is licensed under the ISC License.
 Contributions are welcome! Please open an issue or submit a pull request for any improvements.
 
 ---
-**Maintained by**: [Your Name/GitHub Profile]
+
